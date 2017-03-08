@@ -1,0 +1,11 @@
+framerate = 60
+window_width = 1366
+window_height = 768
+score_target = 2
+paddle_height = 150
+paddle_width = 20
+ball_size = 20
+ball_velocity_range = (10, 15)
+background_color = 0
+foreground_color = 255
+movement_dampening = 5
