@@ -1,4 +1,6 @@
-#define AVERAGE 10
+#define FRAMERATE 30
+
+unsigned short delta_time = 1000 / FRAMERATE;
 
 struct UltraSonic {
   char trigger_pin,
@@ -7,7 +9,7 @@ struct UltraSonic {
                distance;
 };
 
-UltraSonic left_sensor = {8, 7};
+UltraSonic left_sensor = {9, 8};
 UltraSonic right_sensor = {10, 11};
 
 void setup() {
@@ -28,23 +30,30 @@ void measure(UltraSonic& sensor) {
   sensor.distance = (sensor.duration / 2) / 29.1;
 }
 
+unsigned long last_time = 0;
+short repetitions = 0;
+
+unsigned int left_average = 0,
+             right_average = 0;
+
 void loop() {
 
-  unsigned int left_average = 0,
-               right_average = 0;
+//  Serial.println(millis());
 
-  for (char i = 0; i < AVERAGE; ++i) {
+  if (millis() - last_time > delta_time) {
+    last_time = millis();
+    left_average /= repetitions;
+    right_average /= repetitions;
+    Serial.println(String(left_average) + ' ' + String(right_average));
+    left_average = 0;
+    right_average = 0;
+    repetitions = 0;
+  } else {
+    ++repetitions;
     measure(left_sensor);
     left_average += left_sensor.distance;
-  //measure(right_sensor);
-    right_average = 0;
+//    measure(right_sensor);
+//    right_average += right_sensor.distance;
   }
-  
-  left_average /= AVERAGE;
-  right_average /= AVERAGE;
-
-  Serial.println(String(left_average) + ' ' + String(right_average));
-
-  delay(20);
     
 }

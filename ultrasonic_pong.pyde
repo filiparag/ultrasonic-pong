@@ -2,16 +2,18 @@ import parameters as params
 from random import randrange, random
 add_library('serial')
 
-# serial_port = '/dev/ttyUSB0'
-# serial_reader = Serial(this, serial_port, 9600)
+serial_port = '/dev/ttyUSB0'
+serial_reader = Serial(this, serial_port, 9600)
 
 class Game:
     
     def __init__(self):
         self.score = {'left': 0,
                       'right': 0}
-        self.paddle = {'left': params.window_height / 2 - params.paddle_height / 2,
-                       'right': params.window_height / 2 - params.paddle_height / 2}
+        self.paddle = {'left': 0,
+                       'right': 0}
+        self.paddle_target = {'left': params.window_height / 2 - params.paddle_height / 2,
+                              'right': params.window_height / 2 - params.paddle_height / 2}
         self.ball = {}
         self.reset_ball()
         
@@ -23,17 +25,9 @@ class Game:
    
     def position_paddles(self):
         # positioning
-        self.paddle['left'] += (mouseY - self.paddle['left']) / params.movement_dampening
-        self.paddle['right'] += (mouseX - self.paddle['right']) / params.movement_dampening
-        # boundaries
-        if self.paddle['left'] < 0:
-            self.paddle['left'] = 0
-        elif self.paddle['left'] + params.paddle_height > params.window_height:
-            self.paddle['left'] =  params.window_height - params.paddle_height
-        if self.paddle['right'] < 0:
-            self.paddle['right'] = 0
-        elif self.paddle['right'] + params.paddle_height > params.window_height:
-            self.paddle['right'] =  params.window_height - params.paddle_height
+        self.paddle['left'] += (self.paddle_target['left'] - self.paddle['left']) / params.movement_dampening
+        self.paddle_target['right'] = mouseY
+        self.paddle['right'] += (self.paddle_target['right'] - self.paddle['right']) / params.movement_dampening
       
     def position_ball(self):
         # move ball
@@ -42,12 +36,12 @@ class Game:
         # collide ball with paddles
         if self.ball['left'] <= params.paddle_width and\
             self.ball['top'] + params.ball_size >= self.paddle['left'] and self.ball['top'] <= self.paddle['left'] + params.paddle_height:
-                self.ball['velocity'][0] *= -1.1
+                self.ball['velocity'][0] *= -1.2
                 if self.ball['left'] <= params.paddle_width:
                     self.ball['left'] = params.paddle_width + 1
         elif self.ball['left'] + params.ball_size >= params.window_width - params.paddle_width and\
            self.ball['top'] + params.ball_size >= self.paddle['right'] and self.ball['top'] <= self.paddle['right'] + params.paddle_height:
-            self.ball['velocity'][0] *= -1.1
+            self.ball['velocity'][0] *= -1.2
             if self.ball['left'] + params.ball_size >= params.window_width - params.paddle_width:
                     self.ball['left'] = params.window_width - params.paddle_width - params.ball_size - 1
         # collide ball with edges
@@ -92,6 +86,30 @@ class Game:
         textSize(18);
         text('%i : %i' % (self.score['left'], self.score['right']), params.window_width / 2, 15)
 
+def input():
+    if serial_reader.available() > 0:
+        try:
+            raw_data = serial_reader.readStringUntil(10);
+            if raw_data is not None:
+                left_position, right_position = raw_data.split()
+                left_position = correct_input(int(left_position))
+                right_position = correct_input(int(right_position))
+                g.paddle_target['left'] = left_position
+                g.paddle_target['right'] = right_position
+        except:
+            pass
+
+def correct_input(value):
+    if value < params.position_start_offset:
+        value = params.window_height - params.paddle_height + params.paddle_width
+    elif value > params.position_start_offset + params.position_sensitivity_range:
+        value = 0
+    else:
+        value = value - params.position_start_offset
+        value = (params.window_height - params.paddle_height) - \
+                (params.window_height - params.paddle_height) * value / params.position_sensitivity_range
+    return value
+
 def setup():
     global logo, g
     logo = loadImage('pfe.png')
@@ -100,8 +118,11 @@ def setup():
     size(params.window_width, params.window_height)
     noCursor()
     fullScreen()
+    while not serial_reader.available() > 0:
+        pass
     
 def draw():
     background(params.background_color)
     image(logo, params.window_width / 2 - 150, params.window_height / 2 - 150, 300, 300);
+    input()
     g.frame()
